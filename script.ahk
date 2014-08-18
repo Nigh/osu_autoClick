@@ -1,12 +1,19 @@
 ﻿
 #NoEnv
 #SingleInstance force
+; #MaxThreads
+#MaxThreadsPerHotkey 2
 SetBatchLines, -1
 SendMode event
 SetWorkingDir %A_ScriptDir%
 SetKeyDelay, -1, 1
 SetMouseDelay, -1,play
 
+osuPath:="E:\osu!\"
+fileScan(osuPath "Songs\")
+; osuPath "Songs"
+
+stop:=1
 rand:=1
 rand_var:=5
 mode:="taiko"
@@ -25,7 +32,16 @@ gui, add, text, x50 y100, Drop file in there
 gui, add, text, y+0 vtxt, Mode:Taiko
 gui, show, x0 y0 w200 h200
 radioGroup:=1
+
+; OnMessage(0x0c, "titleChange")
+; OnMessage(0x4a, "titleChange")
+
 Return
+
+titleChange(wParam, lParam)
+{
+	ToolTip, % wParam "," lParam
+}
 
 select:
 gui,Submit,NoHide
@@ -35,6 +51,7 @@ if(mode="taiko")
 	GuiControl, ,txt, Mode:Taiko
 Else if(mode="osu")
 	GuiControl, ,txt, Mode:OSU!
+	gui,show,,% mode
 Return
 
 GuiClose:
@@ -46,10 +63,11 @@ GuiDropFiles:
 ; 	Msgbox, OSU! mode is under construction...
 ; 	Return
 ; }
-gui, Cancel
 
 FileRead, file, % A_GuiEvent
 
+SetFiles:
+gui, Cancel
 detected:=0
 
 osu:=Object()
@@ -69,7 +87,11 @@ Loop
 	if(GetKeyState("z","P")=1 or GetKeyState("x","P")=1)
 	break
 	Else
-	Sleep, 0
+	{
+		Sleep, 0
+		if(GetKeyState("F6","P")=1)
+			Return
+	}
 }
 
 
@@ -93,6 +115,8 @@ loop, % osu.time.Maxindex()-1
 	{
 		DllCall("QueryPerformanceCounter", "Int64P",  nowTime)
 	}
+	if(stop)
+		Return
 	if(mode="osu")
 		eventHandlerOsu(osu.event[ptr])
 	else if(mode="taiko")
@@ -222,7 +246,8 @@ rands(min=0,max=100)
 eventHandlerTaiko(event)
 {
 	global ptr, nowTime, freq, startTime, osu
-	ToolTip, % ptr
+	; ToolTip, % ptr
+	TT(ptr)
 	if(event=0 or event=1)
 	{
 		MouseClick, Left
@@ -274,7 +299,8 @@ eventHandlerOsu(event)
 {
 	global ptr, nowTime, freq, startTime, osu
 	static red:=0
-	ToolTip, % "osu:"ptr
+	; ToolTip, % "osu:"ptr
+	TT("osu:"ptr)
 	; if(ptr>14)
 	; Msgbox, % event " " event&1
 	if(event=0x7e)
@@ -374,7 +400,7 @@ eventHandlerOsu(event)
 			; Send, {x down}
 			red:=0
 		}
-		while((nowTime//(freq/1000)-startTime)<(osu.time[ptr+1]-50))
+		while((nowTime//(freq/1000)-startTime)<(osu.time[ptr+1]-50))	; if last event is slider, there will be some problem
 		{
 			DllCall("QueryPerformanceCounter", "Int64P",  nowTime)
 			Sleep, 1
@@ -394,7 +420,59 @@ eventHandlerOsu(event)
 
 
 F5::ExitApp
-F6::Reload
+
+#IfWinActive, osu!
+F6::
+if(!stop){
+	stop:=1
+	TT("SToP")
+	Return
+}
+stop:=0
+WinGetActiveTitle, Title
+RegExMatch(Title, "osu!  - (.+)",mTitle)
+; if(mTitle){
+; 	ToolTip, % "succecced!:" mTitle1
+; 	; Clipboard:=mTitle1
+; }
+; Else{
+; 	ToolTip, % "failed!:" Title
+; }
+; Aoyama Misao - Distance [Insane]
+; Aoyama Misao - Distance (Kodora) [Insane]
+count:=0 ; may there be songs in same name
+found:={}
+loop, % songs.name.MaxIndex()
+{
+	RegExMatch(songs.name[A_Index], "(.+)\(.+?\)\s(.+)",match)
+	name:=match1 . match2
+	IfInString, name, % mTitle1
+	{
+		count++
+		found.Insert(A_Index)
+	}
+}
+
+if(count>1)
+{
+	temp:=""
+	loop, % count
+	{
+		temp.=songs.path[found[A_Index]] "`n"
+	}
+	Msgbox,% "more than one sample found`n" temp
+}
+else if(count=1)
+{
+	FileRead,file,% songs.path[found[1]]
+	Goto, SetFiles
+}
+else
+{
+	Msgbox, % "QwQ, No sample found..."
+}
+Return
+#if
 
 killTT:
 ToolTip
@@ -412,3 +490,24 @@ startTime+=5
 ; ToolTip, % startTime
 ; SetTimer, killTT, -500
 Return
+
+fileScan(path)
+{
+	global
+	songs:={}
+	songs.name:=[]
+	songs.path:=[]
+	loop, % path "*",0,1
+	{
+		if(A_LoopFileExt!="osu")
+			Continue
+		songs.name.Insert(A_LoopFileName)
+		songs.path.Insert(A_LoopFileFullPath)
+	}
+}
+
+TT(txt)
+{
+	ToolTip, % txt
+	SetTimer, killTT,-2000
+}
