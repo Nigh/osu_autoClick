@@ -25,6 +25,11 @@ dataParse:=[]
 dataParse["taiko"]:="taikoParse"
 dataParse["osu"]:="osuParse"
 
+gui, 2:-Caption +AlwaysOnTop +ToolWindow +Delimiter hwndListBox_ID
+gui, 2:Color,FF00FF
+gui, 2:Add, ListBox, x0 y0 vfileChoice glistBox AltSubmit R5,
+
+gui, 1:Default
 gui, +ToolWindow +AlwaysOnTop
 gui, add, radio, Checked gselect vradioGroup,Taiko
 gui, add, radio, x+0 gselect,OSU!
@@ -37,6 +42,7 @@ radioGroup:=1
 ; OnMessage(0x4a, "titleChange")
 
 Return
+
 
 titleChange(wParam, lParam)
 {
@@ -111,7 +117,7 @@ loop, % osu.time.Maxindex()-1
 		}
 		startTime+=rand_temp
 	}
-	while(nowTime//(freq/1000)-startTime<osu.time[ptr]-20)
+	while(nowTime//(freq/1000)-startTime<osu.time[ptr]-10)
 	{
 		DllCall("QueryPerformanceCounter", "Int64P",  nowTime)
 	}
@@ -400,11 +406,17 @@ eventHandlerOsu(event)
 			; Send, {x down}
 			red:=0
 		}
+		
 		while((nowTime//(freq/1000)-startTime)<(osu.time[ptr+1]-50))	; if last event is slider, there will be some problem
 		{
 			DllCall("QueryPerformanceCounter", "Int64P",  nowTime)
 			Sleep, 1
 		}
+		if(ptr=osu.time.MaxIndex())	; if last event is slider, will wait for left button down
+		{
+			KeyWait, LButton, D
+		}
+		
 		if(red=0)
 		{
 			Click, Right Up
@@ -421,25 +433,19 @@ eventHandlerOsu(event)
 
 F5::ExitApp
 
-#IfWinActive, osu!
+#If WinActive("osu!") or !stop
 F6::
 if(!stop){
 	stop:=1
 	TT("SToP")
 	Return
 }
+
 stop:=0
 WinGetActiveTitle, Title
 RegExMatch(Title, "osu!  - (.+)",mTitle)
-; if(mTitle){
-; 	ToolTip, % "succecced!:" mTitle1
-; 	; Clipboard:=mTitle1
-; }
-; Else{
-; 	ToolTip, % "failed!:" Title
-; }
-; Aoyama Misao - Distance [Insane]
-; Aoyama Misao - Distance (Kodora) [Insane]
+if(!mTitle)
+	Return
 count:=0 ; may there be songs in same name
 found:={}
 loop, % songs.name.MaxIndex()
@@ -456,23 +462,53 @@ loop, % songs.name.MaxIndex()
 if(count>1)
 {
 	temp:=""
+	tempListBox:=""
+	fileNameLengthMax:=0
 	loop, % count
 	{
 		temp.=songs.path[found[A_Index]] "`n"
+		_:=songs.path[found[A_Index]]
+		SplitPath,_,fileName
+		tempListBox.=fileName
+		if(fileNameLengthMax<8*strLen(fileName))
+			fileNameLengthMax:=8*strLen(fileName)
+		if(A_Index<count)
+			tempListBox.="|"
 	}
-	Msgbox,% "more than one sample found`n" temp
+	; Msgbox, % tempListBox
+	MouseGetPos, tempX, tempY
+	GuiControl,2:, fileChoice,|
+	GuiControl,2:, fileChoice,% tempListBox
+	GuiControl,2: Move, fileChoice, w%fileNameLengthMax% r%count%
+	gui,2:Show, x%tempX% y%tempY% w%fileNameLengthMax%
+	WinSet, TransColor, FF00FF 180, ahk_id %ListBox_ID%
+	; GuiControl,2:w%fileNameLengthMax%,fileChoice
+
+	TT("more than one sample found")	;temp
 }
 else if(count=1)
 {
 	FileRead,file,% songs.path[found[1]]
-	Goto, SetFiles
+	SetTimer, SetFiles, -1
 }
 else
 {
-	Msgbox, % "QwQ, No sample found..."
+	Msgbox,4096,, % "QwQ, No sample found..."
 }
 Return
 #if
+
+listBox:
+gui,2:Submit,NoHide
+if(!fileChoice)
+	Return
+gui,2:Hide
+FileRead,file,% songs.path[found[fileChoice]]
+SetTimer, SetFiles, -1
+; Msgbox, % songs.path[found[fileChoice]]
+; FileRead,file,% songs.path[found[1]]
+; SetTimer, SetFiles, -1
+Return
 
 killTT:
 ToolTip
