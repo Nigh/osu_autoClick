@@ -9,6 +9,7 @@ SetWorkingDir %A_ScriptDir%
 SetKeyDelay, -1, 1
 SetMouseDelay, -1,play
 
+
 osuPath:="E:\osu!\"
 fileScan(osuPath "Songs\")
 ; osuPath "Songs"
@@ -278,25 +279,25 @@ eventHandlerTaiko(event)
 	}
 	else if(event=254)
 	{
-		while((nowTime//(freq/1000)-startTime)<(osu.eventover[ptr]-50))
+		while((nowTime//(freq/1000)-startTime)<(osu.eventover[ptr]-250))
 		{
 			DllCall("QueryPerformanceCounter", "Int64P",  nowTime)
 			MouseClick, Left
-			Sleep, 60
+			Sleep, 50
 			MouseClick, Right
-			Sleep, 60
+			Sleep, 50
 		}
 	}
 	else if(event=255)
 	{
-		while((nowTime//(freq/1000)-startTime)<(osu.eventover[ptr]-50))
+		while((nowTime//(freq/1000)-startTime)<(osu.eventover[ptr]-250))
 		{
 
 			DllCall("QueryPerformanceCounter", "Int64P",  nowTime)
 			Send, z
-			Sleep, 60
+			Sleep, 50
 			Send, x
-			Sleep, 60
+			Sleep, 50
 		}
 	}
 }
@@ -347,21 +348,24 @@ eventHandlerOsu(event)
 		static centerY:=A_ScreenHeight//2
 		MouseGetPos, tempX, tempY
 		Send, {x Down}
+
+		; BlockInput, Mouse
 		while(1)
 		{
 			DllCall("QueryPerformanceCounter", "Int64P",  nowTime)
-			Sleep, 11
-			MouseMove, % centerX, % centerY-150, 0
-			Sleep, 11
-			MouseMove, % centerX+150, % centerY, 0
-			Sleep, 11
-			MouseMove, % centerX, % centerY+150, 0
-			Sleep, 11
-			MouseMove, % centerX-150, % centerY, 0
+			; Sleep, 11
+			; MouseMove, % centerX, % centerY-150, 0
+			; Sleep, 11
+			; MouseMove, % centerX+150, % centerY, 0
+			; Sleep, 11
+			; MouseMove, % centerX, % centerY+150, 0
+			; Sleep, 11
+			; MouseMove, % centerX-150, % centerY, 0
 			if( (nowTime//(freq/1000)-startTime)>(osu.eventover[ptr]-350) 
 				and (nowTime//(freq/1000)-startTime)>osu.time[ptr]+500)
 			break
 		}
+		; BlockInput, Off
 		Send, {x up}
 		; MouseMove, % tempX, % tempY,0
 	}
